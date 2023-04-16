@@ -1,4 +1,6 @@
 
+#include "eventbroker.h"
+
 #include <fmt/core.h>
 #include <variant>
 #include <concepts>
@@ -38,6 +40,7 @@ struct Module1 {
     Event operator()(Event1) {
         fmt::print("Mod 1 Got Event1\n");
         if (goToNext) {
+            fmt::print("Mod 1 created Event2\n");
             return Event2{};
         }
         return NoEvent{};
@@ -68,124 +71,8 @@ struct Module3 {
 
 };
 
-/////
-
-
-template <typename T, typename U>
-concept EventListener = requires (T val) {
-    val(U{});
-};
-
-template <typename T, typename U>
-concept EventProducer = requires (T val) {
-    { val(U{}) } -> std::convertible_to<Event>;
-};
-
-// template <typename T>
-// concept Event1Listener = requires (T val) {
-//     val(Event1{});
-// };
-
-// static_assert(EventListener<Module1, Event1>);
-
-// template <typename T>
-// concept ReturnsNewEventOnEvent1 = requires (T val) {
-//     { val(Event1{}) } -> std::convertible_to<Event>;
-// };
-
-// template <typename T>
-// concept Event2Listener = requires (T val) {
-//     val(Event2{});
-// };
-
-// static std::tuple listerners {
-//     Module1{},
-//     Module2{},
-//     Module3{},
-// };
-
-template<typename... Types>
-struct EventDispatcher {
-
-    std::tuple<Types...> listeners;
-    std::vector<Event> newEvents;
-    size_t ignoreCount = 0;
-
-    // void operator()(Event1 ev, auto listener) {
-    //     if constexpr (ReturnsNewEventOnEvent1<decltype(listener)>) {
-    //         const auto res = listener(ev);
-    //         newEvents.push_back(res);
-    //     }
-    //     else if constexpr (Event1Listener<decltype(listener)>) {
-    //         listener(ev);
-    //     }
-    //     else {
-    //         ignoreCount++;
-    //     }
-    // }
-
-    // void operator()(Event2 ev, auto listener) {
-    //     if constexpr (Event2Listener<decltype(listener)>) {
-    //         listener(ev);
-    //     } else {
-    //         ignoreCount++;
-    //     }
-    // }
-
-    void operator()([[maybe_unused]] auto ev, [[maybe_unused]] auto listener) {
-
-        if constexpr (EventProducer<decltype(listener), decltype(ev)>) {
-            const auto res = listener(ev);
-            if (isEmpty(res) == false) {
-                newEvents.push_back(res);
-            }
-        }
-
-        else if constexpr (EventListener<decltype(listener), decltype(ev)>) {
-            listener(ev);
-        }
-        else {
-            ignoreCount++;
-        }
-        // fmt::print(
-        //     "Unimplemented dispatch for event: {}\n",
-        //     typeid(decltype(ev)).name()
-        // );
-
-        // fmt::print(
-        //     "Event of type: {} ignored by {}\n",
-        //     typeid(decltype(ev)).name(),
-        //     typeid(decltype(listener)).name()
-        // );
-    }
-
-    void notify(auto ev) {
-        auto func = [&](auto&&... args) {
-            (this->operator()(ev, args), ...);
-        };
-        std::apply(func, listeners);
-    }
-
-    auto operator()(Event ev) {
-        newEvents.clear();
-        ignoreCount = 0;
-
-        std::visit([&](auto ev) { return notify(ev); }, ev);
-        if (ignoreCount >= std::tuple_size<decltype(listeners)>()) {
-            fmt::print("{} ignored by every listener\n", std::visit(ToString{}, ev));
-        }
-        return newEvents;
-    }
-};
-
-
 int main() {
 
-    EventDispatcher<
-        Module1,
-        Module2,
-        Module3
-    > evD{};
 
     std::vector<Event> events {
         Event1{},
@@ -193,11 +80,31 @@ int main() {
         Event3{},
     };
 
+    Module1 m1{};
+
+    using Events = type_sequence<
+        NoEvent,
+        Event1,
+        Event2,
+        Event3
+    >;
+
+    using Observers = type_sequence<
+        Module1
+    >;
+
+    EventBroker<Events, Observers> evD{
+        m1
+    };
+
+    m1.goToNext = true;
+
     for (auto&& oldEv : events) {
         const auto newEvents = evD(oldEv);
         for (auto&& ev : newEvents) {
-            fmt::print("new: {}\n", std::visit(ToString{}, ev));
+            fmt::print("new event: {}\n", std::visit(ToString{}, ev));
         }
     }
+
     return 0;
 }
