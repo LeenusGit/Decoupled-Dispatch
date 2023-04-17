@@ -9,6 +9,9 @@
 #include <vector>
 #include <array>
 
+struct Tick {
+    int delta{1};
+};
 struct Event1 { };
 struct Event2 { };
 struct Event3 {
@@ -45,7 +48,17 @@ struct Module1 {
         }
         return NoEvent{};
     }
+    auto operator()(Tick t, auto func) {
+        counter += t.delta;
+        if (counter >= 5) {
+            counter = 0;
+            func(Event1{});
+            func(Event2{});
+        }
+    }
+
     bool goToNext = false;
+    int counter = 0;
 };
 
 struct Module2 {
@@ -81,30 +94,21 @@ int main() {
     };
 
     Module1 m1{};
-
-    using Events = type_sequence<
-        NoEvent,
-        Event1,
-        Event2,
-        Event3
-    >;
-
-    using Observers = type_sequence<
-        Module1
-    >;
-
-    EventBroker<Events, Observers> evD{
-        m1
-    };
-
     m1.goToNext = true;
+    Module2 m2{};
+    Module3 m3{};
 
-    for (auto&& oldEv : events) {
-        const auto newEvents = evD(oldEv);
-        for (auto&& ev : newEvents) {
-            fmt::print("new event: {}\n", std::visit(ToString{}, ev));
-        }
-    }
+    auto broker = make_broker<NoEvent, Event1, Event2, Tick>(m1, m2);
+    broker(Tick{5});
+
+    // const auto tmp = sizeof(decltype(evD)::AnyEvent);
+
+    // for (auto&& oldEv : events) {
+    //     const auto newEvents = evD(oldEv);
+    //     for (auto&& ev : newEvents) {
+    //         fmt::print("new event: {}\n", std::visit(ToString{}, ev));
+    //     }
+    // }
 
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <tuple>
 #include <vector>
 #include <variant>
+#include <span>
 
 #include <fmt/core.h>
 
@@ -15,6 +16,16 @@ concept EventListener = requires (T val) {
 template <typename T, typename U, typename V>
 concept EventProducer = requires (T val) {
     { val(U{}) } -> std::convertible_to<V>;
+};
+
+template <typename T, typename U>
+concept Callback = requires (T func) {
+    { func(U{}) };
+};
+
+template <typename T, typename U, typename V>
+concept EventProducer2 = requires (T functor) {
+    { functor(U{}, V{}) };
 };
 
 template<typename... Types> struct type_sequence {};
@@ -33,9 +44,19 @@ struct EventBroker<type_sequence<EventTypes...>, type_sequence<ObserverTypes...>
     AnyEventContainer newEvents;
     size_t ignoreCount = 0;
 
-    void operator()([[maybe_unused]] auto ev, [[maybe_unused]] auto listener) {
+    struct EventSink {
+        void operator()(AnyEvent ev) {
+            fmt::print("Sink got event: {}\n", ev.index());
+        }
+    };
 
-        if constexpr (EventProducer<decltype(listener), decltype(ev), AnyEvent>) {
+    auto operator()(auto ev, auto& listener) {
+
+        if constexpr (EventProducer2<decltype(listener), decltype(ev), EventSink>) {
+            listener(ev, EventSink{});
+        }
+
+        else if constexpr (EventProducer<decltype(listener), decltype(ev), AnyEvent>) {
             const auto res = listener(ev);
             if (isEmpty(res) == false) {
                 newEvents.push_back(res);
@@ -68,3 +89,10 @@ struct EventBroker<type_sequence<EventTypes...>, type_sequence<ObserverTypes...>
         return newEvents;
     }
 };
+
+template <typename... EventTypes, typename... ObserversTypes>
+auto make_broker(ObserversTypes&... observers) {
+    using Events = type_sequence<EventTypes...>;
+    using Observers = type_sequence<ObserversTypes...>;
+        return EventBroker<Events, Observers>{observers...};
+}
