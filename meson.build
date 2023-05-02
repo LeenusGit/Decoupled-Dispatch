@@ -1,14 +1,16 @@
-project('observer', 'cpp',
+project('Decoupled Dispatch', 'cpp',
   version : '0.1',
   default_options : [
     'warning_level=3',
     'cpp_std=c++20',
   ])
 
-exe = executable('observer', 'observer.cpp',
-  # cpp_args: ['-fno-rtti'],
-  install : true,
-  dependencies: dependency('fmt')
-  )
+inc = include_directories('src')
 
-test('basic', exe)
+dep = declare_dependency(
+  include_directories: inc
+)
+
+subdir('example' / 'simple')
+subdir('example' / 'readme')
+subdir('test')
