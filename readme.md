@@ -102,17 +102,17 @@ private:
 };
 ```
 
-Dispatch is constructed with a variadic number of types. Each argument is stored in a tuple matching the input types. When `operator()` is called with an argument, Dispatch will iterate over the tuple and forward the given argument to each of stored types' `operator()`, if they have implemented such a function. We are using C++20 concepts to check for existance of the implemented function operator.
+Dispatch is constructed with a variadic number of types. Each argument is stored in a tuple matching the types that were passed to the contructor. When `operator()` is called with an argument, Dispatch will iterate over the tuple and forward the given argument to each of stored types' `operator()`, if they have implemented such a function. We are using C++20 concepts to check for existance of the implemented function operator.
 
 The tuple is visited using the `std::apply` and a fold expression. This [should](https://stackoverflow.com/questions/46056268/order-of-evaluation-for-fold-expressions) guarantee that the order in which each listener is provided, is also the order in which each provided listener will receive an argument:
 
 ```c++
-Dispatch dispatch{
+Dispatch broker{
     Module1{},  // Will receive Event1 before Module2 (assuming Module2 has implemented operator()(Event2))
     Module2{},
 };
 
-dispatch(Event1{});
+broker(Event1{});
 ```
 
 ## Producing Events
@@ -171,11 +171,112 @@ for (auto&& event : queue) {
 ### Using Inheritance
 
 ```c++
-struct Event {
-    virtual ~Event() = default;
+struct EventBase {
+    virtual ~EventBase() = default;
 };
 
-std::vector<EventBase>
+struct Event1 : public EventBase {};
+struct Event2 : public EventBase {};
+
+struct Module1 {
+    
+    auto operator()(Event1) {
+        fmt::print("Received Event1\n");
+    }
+};
+
+struct Module2 {
+    
+    auto operator()(Event2) {
+        fmt::print("Received Event2\n");
+    }
+};
+
+template <typename T>
+auto downCast(EventBase* base, auto func) {
+    const auto* res = dynamic_cast<T*>(base);
+    if (res != nullptr)  {
+        func(*res);
+    }
+}
+
+int main() {
+    std::vector<EventBase*> queue;
+
+    auto ev1 = Event1{};
+    auto ev2 = Event2{};
+    queue.push_back(&ev1);
+    queue.push_back(&ev2);
+
+    Dispatch broker{
+        Module1{},
+        Module2{},
+    };
+
+    for (const auto ev: queue) {
+        downCast<Event1>(ev, broker);
+        downCast<Event2>(ev, broker);
+    }
+}
+```
+
+### Void* and Id
+
+```c++
+struct EventWrapper {
+    void* event;
+    enum {
+        None,
+        Event1,
+        Event2,
+    } id{};
+};
+
+struct Event1 {};
+struct Event2 {};
+
+struct Module1 {
+    
+    auto operator()(Event1) {
+        fmt::print("Received Event1\n");
+    }
+};
+
+struct Module2 {
+    
+    auto operator()(Event2) {
+        fmt::print("Received Event2\n");
+    }
+};
+
+int main() {
+    std::vector<EventWrapper> queue;
+
+    auto ev1 = Event1{};
+    auto ev2 = Event2{};
+    queue.push_back(EventWrapper{&ev1, EventWrapper::Event1});
+    queue.push_back(EventWrapper{&ev2, EventWrapper::Event2});
+
+    Dispatch broker{
+        Module1{},
+        Module2{},
+    };
+
+    for (const auto& ev: queue) {
+        switch (ev.id) {
+        case EventWrapper::Event1: {
+            broker(*static_cast<Event1*>(ev.event));
+            break;
+        }
+        case EventWrapper::Event2: {
+            broker(*static_cast<Event2*>(ev.event));
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
 ```
 
 <!-- ### Using a Tuple of Vectors -->

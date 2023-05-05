@@ -7,3 +7,7 @@ exe = executable('demo1', 'demo1.cpp',
 executable('callbackevent', 'callbackevent.cpp',
   dependencies: deps
 )
+
+executable('inheritance', 'inheritance.cpp', dependencies: deps)
+
+executable('voidptr', 'voidptr.cpp', dependencies: deps)
