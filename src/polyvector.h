@@ -41,8 +41,8 @@ struct PolyVector {
         std::apply(func, vectors);
     }
 
-    template<same_as_any_of<ElementTypes...> T>
-    constexpr auto push_back_func() {
-        return [&] (T in) { push_back(in); };
-    }
+    // template<same_as_any_of<ElementTypes...> T>
+    // constexpr auto push_back_func() {
+    //     return [&] (T in) { push_back(in); };
+    // }
 };

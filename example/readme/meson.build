@@ -9,5 +9,5 @@ executable('callbackevent', 'callbackevent.cpp',
 )
 
 executable('inheritance', 'inheritance.cpp', dependencies: deps)
-
 executable('voidptr', 'voidptr.cpp', dependencies: deps)
+executable('variant', 'variant.cpp', dependencies: deps)
