@@ -5,6 +5,7 @@
 
 // #include <polyvector.h>
 #include <dispatch.h>
+#include <polycontainer.h>
 
 #include <fmt/chrono.h>
 
@@ -12,94 +13,64 @@
 using namespace std::chrono;
 
 #include <optional>
-template <typename T, size_t size>
+template <typename T, size_t cap>
 struct StaticVector {
-    std::array<std::optional<T>, size> data{};
+    size_t size = 0;
+
+    StaticVector() { }
+
+    std::array<T, cap> data{};
     constexpr void push_back(T item) {
-        for (auto& entry : data) {
-            if (entry.has_value() == false) {
-                entry = item;
-                // fmt::print("Inserted {}\n", typeid(T).name());
-                return;
-            }
+        if (size < cap) {
+            data[size] = item;
+            size++;
         }
     }
     constexpr void clear() {
-        for (auto& entry : data) {
-            entry.reset();
-        }
+        size = 0;
     }
+
+    T* begin() { return data.begin(); }
+    T* end() { return data.begin() + size; }
 };
 
-template <typename T, typename... Ts>
-concept same_as_any_of = (... or std::same_as<T, Ts>);
-
-static constexpr auto maxSize = 10;
-
-template <typename... ElementTypes>
-struct PolyArray {
-    std::tuple<StaticVector<ElementTypes, maxSize>...> vectors;
-
-
-    template<same_as_any_of<ElementTypes...> T>
-    constexpr StaticVector<T, maxSize>& get_vector() {
-        return std::get<StaticVector<T, maxSize>>(vectors);
+template <typename T>
+struct Container {
+    T item;
+    void push_back(T) {
+        fmt::print("{} pushed\n", typeid(T).name());
     }
 
-    template<same_as_any_of<ElementTypes...> T>
-    constexpr auto push_back(T item) {
-        // fmt::print("Push {}\n", typeid(T).name());
-        return get_vector<T>().push_back(item);
-    }
+    T* begin() { return &item; }
+    T* end() { return &item + 1; }
 
-    constexpr auto visit(auto visitFunc) {
-
-        auto iterate = [&] (const auto& vector) {
-            for (auto&& element : vector.data) {
-
-                // fmt::print("Push {}\n", typeid(decltype(element)).name());
-                if (element.has_value()) {
-                    visitFunc(element.value());
-                }
-                else {
-                    break;
-                }
-            }
-        };
-        auto func = [&](auto&... args) {
-            (iterate(args), ...);
-        };
-        std::apply(func, vectors);
-    }
-
-    constexpr auto clear() {
-        auto func = [&](auto&&... args) {
-            (args.clear(), ...);
-        };
-        std::apply(func, vectors);
-    }
+    void clear() {
+        fmt::print("Cleared\n");
+    };
 };
 
 int main() {
 
-    PolyArray<
-        Error,
-        DataReadyRead,
-        ConfigChanged,
-        StateChanged,
-        Event1,
-        Event2,
-        Event3,
-        CallBackEvent,
-        Tick,
-        BigEvent
+    static constexpr auto defaultSize = 10;
+    PolyContainer<
+        StaticVector<DataReadyRead, defaultSize>,
+        StaticVector<Tick, defaultSize>,
+        StaticVector<ConfigChanged, defaultSize>,
+        StaticVector<StateChanged, defaultSize>,
+        StaticVector<Event1, defaultSize>,
+        StaticVector<Event2, defaultSize>,
+        StaticVector<Event3, defaultSize>,
+        StaticVector<CallBackEvent, defaultSize>,
+        StaticVector<Error, defaultSize>,
+        StaticVector<BigEvent, 5>
     > queue{};
+
     auto queue2 = queue;
 
-    auto& pushQueue = queue;
-    auto& pullQueue = queue2;
+    auto pushQueue = &queue;
+    auto pullQueue = &queue2;
 
-    auto sink = [&] (auto ev) { pushQueue.push_back(ev); };
+    auto sink = [&] (auto ev) { pushQueue->push_back(ev); };
     using SinkType = decltype(sink);
 
     Dispatch broker{
@@ -123,13 +94,13 @@ int main() {
 
     for (size_t i = 0; i < limit; i++) {
         eventGenerate(sink);
-        std::swap(pushQueue, pullQueue);
-        pullQueue.visit(dispatch);
-        pullQueue.clear();
+        std::swap(pullQueue, pushQueue);
+        pullQueue->visit(dispatch);
+        pullQueue->clear();
     }
 
     const auto end = high_resolution_clock::now();
-    const auto dur = duration_cast<microseconds>(end - begin);
+    const auto dur = end - begin;
     fmt::print("\nPolyarray\n");
     fmt::print("Count: {}\n", totalEventsReceived);
     for (int idx = 0; int count : eventGenerate.hist) {
@@ -139,4 +110,5 @@ int main() {
     fmt::print("Duration: {}\n", duration_cast<milliseconds>(dur));
     fmt::print("Events per ms: {}\n", totalEventsReceived / duration_cast<milliseconds>(dur).count());
     fmt::print("Heap: {} MiB\n", allocated / 1024.0 / 1024);
+    fmt::print("{} per event\n", dur / totalEventsReceived);
 }

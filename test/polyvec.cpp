@@ -59,7 +59,7 @@ int main() {
     }
 
     const auto end = high_resolution_clock::now();
-    const auto dur = duration_cast<microseconds>(end - begin);
+    const auto dur = (end - begin);
     fmt::print("\nPolyvec\n");
     fmt::print("Count: {}\n", totalEventsReceived);
     for (int idx = 0; int count : eventGenerate.hist) {
@@ -69,4 +69,5 @@ int main() {
     fmt::print("Duration: {}\n", duration_cast<milliseconds>(dur));
     fmt::print("Events per ms: {}\n", totalEventsReceived / duration_cast<milliseconds>(dur).count());
     fmt::print("Heap: {} MiB\n", allocated / 1024.0 / 1024);
+    fmt::print("{} per event\n", dur / totalEventsReceived);
 }
