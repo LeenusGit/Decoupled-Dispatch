@@ -9,7 +9,7 @@ template<typename EventType, typename F>
 struct Module {
     F sink;
     Module(F sink) : sink{sink} { }
-    void operator()(EventType) {
+    void operator()(const EventType&) {
         totalEventsReceived++;
         const int newEvents = eventGenerate();
         for (int i = 0; i < newEvents; i++) {

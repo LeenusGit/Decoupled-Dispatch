@@ -11,25 +11,36 @@
 #include <chrono>
 using namespace std::chrono;
 
+#include <variant>
+
+using Event = std::variant<
+    Error,
+    DataReadyRead,
+    ConfigChanged,
+    StateChanged,
+    Event1,
+    Event2,
+    Event3,
+    // BigEvent,
+    std::shared_ptr<BigEvent>,
+    CallBackEvent,
+    Tick
+>;
+
 int main() {
 
-    PolyVector<
-        Error,
-        DataReadyRead,
-        ConfigChanged,
-        StateChanged,
-        Event1,
-        Event2,
-        Event3,
-        BigEvent,
-        CallBackEvent,
-        Tick
-    > vec;
-    auto vec2 = vec;
+    std::vector<Event> queue;
+    std::vector<Event> queue2;
 
-    auto sink = [&] (auto ev) { vec.push_back(ev); };
+    auto sink = [&] (auto ev) { 
+        if constexpr (std::same_as<decltype(ev), BigEvent>) {
+            queue.push_back(std::make_shared<BigEvent>(ev));
+        }
+        else {
+            queue.push_back(ev);
+        }
+    };
     using SinkType = decltype(sink);
-
 
     Dispatch broker{
         Module<Error, SinkType>(sink),
@@ -39,28 +50,29 @@ int main() {
         Module<Event1, SinkType>(sink),
         Module<Event2, SinkType>(sink),
         Module<Event3, SinkType>(sink),
-        Module<BigEvent, SinkType>(sink),
+        Module<std::shared_ptr<BigEvent>, SinkType>(sink),
         Module<CallBackEvent, SinkType>(sink),
         Module<Tick, SinkType>(sink),
     };
 
     static constexpr size_t limit = 10'000'000;
 
-    auto dispatch = [&] (auto&& ev) { broker(ev); };
+    // auto dispatch = [&] (auto&& ev) { broker(ev); };
 
     const auto begin = std::chrono::high_resolution_clock::now();
 
     for (size_t i = 0; i < limit; i++) {
-        // eventGenerate(dispatch);
         eventGenerate(sink);
-        std::swap(vec, vec2);
-        vec2.visit(dispatch);
-        vec2.clear();
+        std::swap(queue, queue2);
+        for (auto&& ev : queue2) {
+            std::visit(broker, ev);
+        }
+        queue2.clear();
     }
 
     const auto end = high_resolution_clock::now();
     const auto dur = duration_cast<microseconds>(end - begin);
-    fmt::print("\nPolyvec\n");
+    fmt::print("\nVariant\n");
     fmt::print("Count: {}\n", totalEventsReceived);
     for (int idx = 0; int count : eventGenerate.hist) {
         fmt::print("{}: {}\n", idx++, count);

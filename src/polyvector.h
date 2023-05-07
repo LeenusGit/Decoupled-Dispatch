@@ -17,8 +17,13 @@ struct PolyVector {
     }
 
     template<same_as_any_of<ElementTypes...> T>
-    constexpr auto push_back(T item) {
+    constexpr auto push_back(const T& item) {
         return get_vector<T>().push_back(item);
+    }
+
+    template<same_as_any_of<ElementTypes...> T>
+    constexpr auto push_back(T&& item) {
+        return get_vector<T>().push_back(std::forward<T>(item));
     }
 
     constexpr auto clear() {
@@ -35,7 +40,7 @@ struct PolyVector {
                 visitFunc(element);
             }
         };
-        auto func = [&](auto&... args) {
+        auto func = [&](auto&&... args) {
             (iterate(args), ...);
         };
         std::apply(func, vectors);

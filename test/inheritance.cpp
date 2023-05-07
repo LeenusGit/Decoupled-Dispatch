@@ -57,12 +57,10 @@ int main() {
 
     static constexpr size_t limit = 10'000'000;
 
-    auto dispatch = [&] (auto&& ev) { broker(ev); };
-
     const auto begin = std::chrono::high_resolution_clock::now();
 
     for (size_t i = 0; i < limit; i++) {
-        eventGenerate(dispatch);
+        eventGenerate(sink);
         std::swap(vec, vec2);
         for (auto& ptr : vec2) {
             eventForward(ptr.get());

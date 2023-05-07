@@ -1,4 +1,5 @@
 
+#include "allocationcount.h"
 #include "inherited/event.h"
 #include "module.h"
 
@@ -26,23 +27,6 @@ auto downcastAndForward(EventPointer base, auto& func) {
 		return true;
 	}
 	return false;
-}
-
-static size_t allocated = 0;
-void* operator new(size_t size) {
-    void* p = malloc(size);
-    if (p != nullptr) {
-        allocated += size;
-    }
-    return p;
-}
-
-void operator delete(void * p) {
-    free(p);
-}
-
-void operator delete(void* p, size_t) {
-    free(p);
 }
 
 int main() {
@@ -79,24 +63,17 @@ int main() {
 
 	queue.appendListener(EventId::Any, eventForward);
 
-    // queue.dispatch(EventId::Any, std::make_shared<Tick>());
-    // totalEventsReceived = 0;
-
-    // static constexpr size_t limit = 1000;
     static constexpr size_t limit = 10'000'000;
-    auto dispatch = [&] (auto ev) { 
-        queue.dispatch(EventId::Any, std::make_shared<decltype(ev)>());
-    };
 
     const auto begin = high_resolution_clock::now();
     for (size_t i = 0; i < limit; i++) {
-        eventGenerate(dispatch);
+        eventGenerate(pushEvent);
         queue.process();
     }
     const auto end = high_resolution_clock::now();
     const auto dur = duration_cast<microseconds>(end - begin);
 
-    fmt::print("Eventpp\n");
+    fmt::print("\nEventpp\n");
     fmt::print("Events: {}\n", totalEventsReceived);
     for (int idx = 0; int count : eventGenerate.hist) {
         fmt::print("{}: {}\n", idx++, count);

@@ -20,6 +20,28 @@ exe = executable('benchmark-polyvec', 'polyvec.cpp',
   ]
 )
 
+exe = executable('benchmark-polyarray', 'polyarray.cpp',
+  include_directories: include_directories(
+    'decoupled',
+    'common',
+  ),
+  dependencies: [
+    dependency('fmt'),
+    dep,
+  ]
+)
+
+exe = executable('benchmark-variant', 'variant.cpp',
+  include_directories: include_directories(
+    'decoupled',
+    'common',
+  ),
+  dependencies: [
+    dependency('fmt'),
+    dep
+  ]
+)
+
 exe = executable('benchmark-eventpp', 'eventpp.cpp',
   include_directories: include_directories(
     'eventpp/include',
@@ -42,3 +64,4 @@ exe = executable('benchmark-inheritance', 'inheritance.cpp',
     dep
   ]
 )
+
