@@ -2,14 +2,16 @@
 #include "allocationcount.h"
 #include "inherited/event.h"
 #include "module.h"
+#include "measure.h"
 
 #include <eventpp/eventqueue.h>
 #include <fmt/core.h>
-#include <fmt/chrono.h>
 
-#include <chrono>
+// #include <fmt/chrono.h>
 
-using namespace std::chrono;
+// #include <chrono>
+
+// using namespace std::chrono;
 
 using EventPointer = std::shared_ptr<Event>;
 
@@ -29,7 +31,12 @@ auto downcastAndForward(EventPointer base, auto& func) {
 	return false;
 }
 
-int main() {
+int main(int argc, char** args) {
+
+	static constexpr size_t def = 10'000'000;
+    const size_t limit = argc == 2 ? std::stoi(args[1]) : def;
+    Generator eventGenerate{limit};
+
     eventpp::EventQueue<EventId, void(const EventPointer&), EventPolicy> queue;
 
 	auto pushEvent = [&](auto ev) {
@@ -63,24 +70,28 @@ int main() {
 
 	queue.appendListener(EventId::Any, eventForward);
 
-    static constexpr size_t limit = 10'000'000;
+    // static constexpr size_t limit = 10'000'000;
 
-    const auto begin = high_resolution_clock::now();
-    for (size_t i = 0; i < limit; i++) {
-        eventGenerate(pushEvent);
-        queue.process();
-    }
-    const auto end = high_resolution_clock::now();
-    const auto dur = (end - begin);
+    // const auto begin = high_resolution_clock::now();
+	auto work = [&] {
+		for (size_t i = 0; i < limit; i++) {
+			eventGenerate(pushEvent);
+			queue.process();
+		}
+	};
 
-    fmt::print("\nEventpp\n");
-    fmt::print("Events: {}\n", totalEventsReceived);
-    for (int idx = 0; int count : eventGenerate.hist) {
-        fmt::print("{}: {}\n", idx++, count);
-    }
-    using milliseconds = duration<double, std::milli>;
-    fmt::print("Duration: {}\n", duration_cast<milliseconds>(dur));
-    fmt::print("Events per ms: {}\n", totalEventsReceived / duration_cast<milliseconds>(dur).count());
-    fmt::print("Heap: {} MiB\n", allocated / 1024.0 / 1024);
-	fmt::print("{} per event\n", dur / totalEventsReceived);
+	measure("Eventpp", work);
+    // const auto end = high_resolution_clock::now();
+    // const auto dur = (end - begin);
+
+    // fmt::print("\nEventpp\n");
+    // fmt::print("Events: {}\n", totalEventsReceived);
+    // for (int idx = 0; int count : eventGenerate.hist) {
+    //     fmt::print("{}: {}\n", idx++, count);
+    // }
+    // using milliseconds = duration<double, std::milli>;
+    // fmt::print("Duration: {}\n", duration_cast<milliseconds>(dur));
+    // fmt::print("Events per ms: {}\n", totalEventsReceived / duration_cast<milliseconds>(dur).count());
+    // fmt::print("Heap: {} MiB\n", allocated / 1024.0 / 1024);
+	// fmt::print("{} per event\n", dur / totalEventsReceived);
 }
