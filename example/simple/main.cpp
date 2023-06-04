@@ -25,7 +25,7 @@ int main() {
     auto pushEv = [&] (auto&& ev) { vec.push_back(ev); };
 
     Dispatch dispatch{
-        Module1(pushEv),
+        Module1{pushEv},
         Module2{pushEv},
     };
 

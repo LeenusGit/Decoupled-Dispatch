@@ -16,7 +16,6 @@ auto measure = [] (std::string name, auto func, size_t eventCount = 0) {
     fmt::print("{}\n", name);
     fmt::print("Events: {}\n", eventCount);
 
-    nanoseconds sum{};
     using milliseconds = duration<double, std::milli>;
 
     using milliseconds = duration<double, std::milli>;

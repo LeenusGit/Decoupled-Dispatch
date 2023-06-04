@@ -27,6 +27,8 @@ struct Module2 {
 
     Func genEvent;
 
+    Module2(Func func) : genEvent{func} { }
+
     void operator()(const EventType&) {
 
         genEvent();

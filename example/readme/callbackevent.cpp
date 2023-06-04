@@ -11,6 +11,7 @@ using Answer = std::function<void()>;
 template <typename F>
 struct Module1 {
     
+    Module1(F func) : sink{func} { }
     F sink;
     int answer = 42;
 
@@ -31,8 +32,8 @@ int main() {
     vec.push_back(Question{});
 
     Dispatch broker{
-        Module1{ [&](auto func) { vec.push_back(Answer{func}); }},
-        Module2{},
+        Module1{[&](Answer func) { vec.push_back(Answer{func}); }},
+        Module2{}
     };
 
     vec.visit([&] (auto&& ev) { broker(ev); });

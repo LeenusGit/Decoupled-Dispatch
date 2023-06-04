@@ -10,4 +10,6 @@ executable('callbackevent', 'callbackevent.cpp',
 
 executable('inheritance', 'inheritance.cpp', dependencies: deps)
 executable('voidptr', 'voidptr.cpp', dependencies: deps)
-executable('variant', 'variant.cpp', dependencies: deps)
+executable('variantdemo', 'variantdemo.cpp', dependencies: deps)
+executable('visit', 'visit.cpp', dependencies: deps)
+executable('overloaded', 'overloaded.cpp', dependencies: deps)

@@ -114,6 +114,84 @@ Dispatch broker{
 
 broker(Event1{});
 ```
+## Alternative Usage
+
+Dispatch is an alternative to the common "overloaded" type-matching visitor.
+
+```c++
+#include <variant>
+
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+
+using UnionType = std::variant<int, std::string>;
+
+int main() {
+
+    overloaded broker {
+        [] (std::string str)    { fmt::print("Received \"{}\"\n", str); },
+        [] (int val)            { fmt::print("Received {}\n", val); },
+    };
+
+    std::visit(broker, UnionType{"42"});
+    std::visit(broker, UnionType{42});
+}
+```
+Output:
+```log
+Module2 Received Event2
+Received "42"
+Received 42
+```
+
+Can be replaced by:
+
+```c++
+#include <dispatch.h>
+#include <variant>
+
+using UnionType = std::variant<int, std::string>;
+
+Dispatch broker{
+    [] (std::string str)    { fmt::print("Received \"{}\"\n", str); },
+    [] (int val)            { fmt::print("Received {}\n", val); },
+};
+std::visit(broker, UnionType{"42"});
+std::visit(broker, UnionType{42});
+```
+Output:
+```log
+Received "42"
+Received 42
+```
+
+The overloaded version can not be used for event dispatching if one of the listeners accepts more than one of the event types. For example, we two module that want to react to Event1:
+
+```c++
+template<class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+
+struct Event1 { };
+struct Module1 {    // Depends on Event1, (and fmt)
+    auto operator()(Event1) {
+        fmt::print("Module1 Received Event1\n");
+    }
+};
+
+struct Module2 { // Depends on Event2, (and fmt)
+    
+    auto operator()(Event1) {
+        fmt::print("Module2 Received Event1\n");
+    }
+};
+
+int main() {
+    overloaded broker{
+        Module1{},
+    };
+    // broker(Event1{});   // Will not compile, call is ambiguous
+}
+```
 
 ## Producing Events
 
@@ -125,7 +203,7 @@ Dispatch broker{
 };
 ```
 
-We need a way to store events before they are forwarded. Can we do this whilst keeping them decoupled form each other?
+We need a way to store events before they are forwarded. Can we do this whilst keeping them decoupled from each other?
 
 Possible solutions:
 
@@ -163,8 +241,8 @@ queue.push_back(Event1{});
 queue.push_back(Event2{});
 
 
-for (auto&& event : queue) {
-    broker(event);
+for (const auto& ev: queue) {
+    std::visit(broker, ev);
 }
 ```
 

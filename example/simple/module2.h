@@ -13,6 +13,7 @@ template<typename F>
 struct Module2 {
 
     F sink;
+    Module2(F sink) : sink{sink} { }
     
     constexpr void operator()(Event2) {
         if (std::is_constant_evaluated() == false) {
