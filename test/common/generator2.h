@@ -14,24 +14,42 @@
 template<bool derived = false>
 struct Generator {
 
-    static constexpr size_t runs = 100;
+    static constexpr size_t runs = 10;
     std::array<int, 5> hist{};
     // size_t total = 0;
     std::vector<int> indexes {1, 2, 3, 4};
     std::vector<int> newEvents;
+    std::vector<int> eventCounts {0, 0, 0, 3};
+    std::vector<int> newEventCounts;
     size_t curr = 0;
+    size_t currEventsCount = 0;
+    size_t eventRequests = 0;
 
     Generator(size_t events) {
 
         std::mt19937 gen{42};
+
+        // for (size_t i = 0; i < runs * events * indexes.size(); i++) {
+        //     if      (i % 3 == 0) { newEventCounts.push_back(2); }
+        //     else if (i % 4 == 0) { newEventCounts.push_back(3); }
+        //     else {  newEventCounts.push_back(0); }
+        //     fmt::print("val: {}\n", newEventCounts.at(i));
+        // }
+
         for (size_t i = 0; i < runs; i++) {
 
             for (size_t j = 0; j < events; j++) {
                 std::shuffle(indexes.begin(), indexes.end(), gen);
                 newEvents.insert(newEvents.end(), indexes.begin(), indexes.end());
+
+                newEventCounts.insert(newEventCounts.end(), eventCounts.begin(), eventCounts.end());
             }
             newEvents.push_back(0);
+            newEventCounts.insert(newEventCounts.end(), eventCounts.begin(), eventCounts.end());
         }
+
+        // std::shuffle(newEventCounts.begin(), newEventCounts.end(), gen);
+        fmt::print("Generated {} indexes\n", newEvents.size());
         fmt::print("Allocated {} GiB for indexes\n", newEvents.capacity() * sizeof(int) / 1024.0 / 1024 / 1024);
     }
 
@@ -39,9 +57,19 @@ struct Generator {
         for (int idx = 0; int count : hist) {
             fmt::print("{}: {}\n", idx++, count);
         }
+        fmt::print("Total requested {}\n", eventRequests);
+        fmt::print("newEventCounts {}\n", newEventCounts.size());
+        int sum = std::accumulate(newEventCounts.begin(), newEventCounts.end(), 0);
+        fmt::print("sum {}\n", sum);
+    }
+
+    size_t newEventsCount() {
+        return newEventCounts.at(currEventsCount++);
     }
     
     void operator()(auto sink) {
+
+        eventRequests++;
 
         if (curr == newEvents.size()) {
             return;
@@ -72,5 +100,6 @@ struct Generator {
 
     void reset() {
         curr = 0;
+        currEventsCount = 0;
     }
 };

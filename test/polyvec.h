@@ -1,8 +1,8 @@
 #pragma once
 
-#include "allocationcount.h"
+// #include "allocationcount.h"
 #include "event.h"
-#include "generator2.h"
+#include "generator3.h"
 #include "module.h"
 
 #include <dispatch.h>
@@ -15,7 +15,7 @@
 
 using namespace std::chrono;
 
-auto polyvec = [] (Generator<>& eventGenerate) {
+auto polyvec = [] (Generator3<>& gen) {
 
     PolyContainer<
         std::vector<Event1>,
@@ -31,18 +31,19 @@ auto polyvec = [] (Generator<>& eventGenerate) {
     auto pullQueue = &queue2;
 
     auto sink = [&] (auto ev) { pushQueue->push_back(ev); };
-    auto genEvent = [&] { eventGenerate(sink); };
+    auto genEvent = [&] { gen(sink); };
     using SinkType = decltype(genEvent);
 
-    std::vector<nanoseconds> deltas;
-    deltas.reserve(100);
+    // std::vector<nanoseconds> deltas;
+    // deltas.reserve(100);
 
-    auto pushDelta = [&] (auto delta) {
-        deltas.push_back(delta);
-    };
+    // auto pushDelta = [&] (auto delta) {
+    //     deltas.push_back(delta);
+    // };
 
     Dispatch broker{
-        Module1<Event1, SinkType,  decltype(pushDelta)>{genEvent, pushDelta},
+        // Module1<Event1, SinkType,  decltype(pushDelta)>{genEvent, pushDelta},
+        Module2<Event1, SinkType>{genEvent},
         Module2<Event2, SinkType>{genEvent},
         Module2<Event3, SinkType>{genEvent},
         Module2<Event4, SinkType>{genEvent},
@@ -51,15 +52,15 @@ auto polyvec = [] (Generator<>& eventGenerate) {
 
 
     auto dispatch = [&] (auto&& ev) { broker(ev); };
+    gen(sink);
 
     auto work = [&] {
-        eventGenerate(sink);
-        for (size_t i = 0; i < eventGenerate.newEvents.size(); i++) {
+        while (not gen.empty()) {
             std::swap(pullQueue, pushQueue);
             pullQueue->visit(dispatch);
             pullQueue->clear();
         }
-        return deltas;
+        return gen.curr;
     };
     measure("PolyVec", work);
 };

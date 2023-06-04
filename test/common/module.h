@@ -1,12 +1,11 @@
 #pragma once
 
-#include "event.h"
+// #include "event.h"
 #include <cstddef>
 
 #include <chrono>
 using namespace std::chrono;
 
-static size_t totalEventsReceived = 0;
 
 template <typename EventType, typename Func, typename DeltaSink>
 struct Module1 {
@@ -20,7 +19,6 @@ struct Module1 {
         deltaSink(duration_cast<nanoseconds>(delta));
         prev = now;
         genEvent();
-        totalEventsReceived++;
     }
 };
 
@@ -30,8 +28,7 @@ struct Module2 {
     Func genEvent;
 
     void operator()(const EventType&) {
-        // gen(sink);
+
         genEvent();
-        totalEventsReceived++;
     }
 };

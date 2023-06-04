@@ -25,7 +25,7 @@ struct Module1 {    // Depends on Event1, (and fmt)
 
 struct Event2 { }; // Depends on nothing
 
-struct Module2 { // Depends on Event2, (and fmt)
+struct Module2 { // Depends on Event2
     
     auto operator()(Event2) {
         fmt::print("Received Event2\n");

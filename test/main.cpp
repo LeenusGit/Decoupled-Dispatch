@@ -2,31 +2,26 @@
 #include "polyvec.h"
 #include "inheritance.h"
 #include "variantbenchmark.h"
+#include "voidptr.h"
+#include "baseline.h"
 
 int main(int argc, char** args) {
 
-    static constexpr size_t def = 10'000'000;
+    static constexpr size_t def = 1'000'000;
     const size_t limit = argc == 2 ? std::stoi(args[1]) : def;
 
     auto run = [limit] (auto func) {
-        Generator eventGenerate{limit};
-        func(eventGenerate);
-        eventGenerate.reset();
-        totalEventsReceived = 0;
+        Generator3<> gen3{limit, 5};
+        fmt::print("\n");
+        func(gen3);
     };
 
-    auto runInheritance = [limit] (auto func) {
-        Generator<true> derivedEventGen{limit};
-        func(derivedEventGen);
-        derivedEventGen.reset();
-        totalEventsReceived = 0;
-    };
-
-    run(polyvec);
-    fmt::print("\n");
+    run(baseline);
     run(polyarray);
-    fmt::print("\n");
+    run(polyvec);
     run(variant);
+    run(voidPtrBenchmark::voidPtr);
     fmt::print("\n");
-    runInheritance(inheritance);
+    Generator3<true> gen3{limit, 5};
+    inheritance(gen3);
 }
